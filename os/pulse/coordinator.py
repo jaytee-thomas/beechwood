@@ -154,24 +154,44 @@ Current date: {datetime.now().strftime('%Y-%m-%d')}
             "status": "operational"
         }
     
-    def route_to_agent(self, agent_name: str, task: str) -> Dict[str, Any]:
+    def route_to_agent(self, agent_name: str, task: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Route a task to a specific AI agent
-        (For now, this is a placeholder - we'll build agents next)
         
         Args:
-            agent_name: Name of the agent (e.g., "engineering", "product", "security")
+            agent_name: Name of the agent (e.g., "engineering", "security")
             task: The task to route
+            context: Optional additional context
             
         Returns:
             Response from the agent
         """
-        return {
-            "routed_to": agent_name,
-            "task": task,
-            "status": "Agent system not yet implemented",
-            "note": "This will be connected to specialized AI employees"
+        # Import agents (lazy import to avoid circular dependencies)
+        from agents.engineering_ai import engineering_ai
+        from agents.security_ai import security_ai
+        
+        # Map agent names to instances
+        agents = {
+            "engineering": engineering_ai,
+            "security": security_ai,
         }
+        
+        # Get the agent
+        agent = agents.get(agent_name.lower())
+        
+        if not agent:
+            return {
+                "success": False,
+                "error": f"Unknown agent: {agent_name}",
+                "available_agents": list(agents.keys())
+            }
+        
+        # Route the task
+        print(f"\n🔀 PULSE routing task to {agent.name}...")
+        result = agent.execute_task(task, context)
+        print(f"✅ {agent.name} completed task\n")
+        
+        return result
 
 
 # Create a global PULSE instance
