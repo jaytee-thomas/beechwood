@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { EmergencySession, EmergencyContact, Location } from '@/types';
-import { sendEmergencyAlerts } from '@/utils/emergency';
+import { createEmergencySession as createSession, resolveSession as resolveSessionDb, cancelSession as cancelSessionDb } from '@/lib/emergency';
 
 export function useEmergencySession() {
   const [activeSession, setActiveSession] = useState<EmergencySession | null>(null);
@@ -15,21 +15,9 @@ export function useEmergencySession() {
     setIsLoading(true);
 
     try {
-      const session: EmergencySession = {
-        id: `session_${Date.now()}`,
-        status: 'active',
-        triggeredAt: new Date(),
-        location: location || undefined,
-        contactsAlerted: contacts,
-        alertsSent: [],
-      };
-
-      const alerts = await sendEmergencyAlerts(session, contacts, location);
-      session.alertsSent = alerts;
-
+      const session = await createSession(contacts, location);
       setActiveSession(session);
       setIsLoading(false);
-
       return session;
     } catch (error) {
       setIsLoading(false);
@@ -39,6 +27,8 @@ export function useEmergencySession() {
 
   const resolveSession = useCallback(async (sessionId: string, notes?: string) => {
     if (activeSession && activeSession.id === sessionId) {
+      await resolveSessionDb(sessionId, notes);
+      
       const updatedSession: EmergencySession = {
         ...activeSession,
         status: 'resolved',
@@ -47,12 +37,13 @@ export function useEmergencySession() {
       };
       
       setActiveSession(updatedSession);
-      console.log('Session resolved:', updatedSession);
     }
   }, [activeSession]);
 
   const cancelSession = useCallback(async (sessionId: string) => {
     if (activeSession && activeSession.id === sessionId) {
+      await cancelSessionDb(sessionId);
+      
       const updatedSession: EmergencySession = {
         ...activeSession,
         status: 'cancelled',
@@ -60,7 +51,6 @@ export function useEmergencySession() {
       };
       
       setActiveSession(updatedSession);
-      console.log('Session cancelled:', updatedSession);
     }
   }, [activeSession]);
 
@@ -73,4 +63,3 @@ export function useEmergencySession() {
     cancelSession,
   };
 }
-
